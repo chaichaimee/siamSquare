@@ -1,0 +1,10 @@
+﻿{
+  "addon_name": "siamSquare",
+  "addon_description": "A Thai word repository containing over 30,000 Thai words with Thai definitions.",
+  "addon_version": "2025.11",
+  "addon_author": "chaichaimee",
+  "addon_url": "https://github.com/chaichaimee/siamSquare",
+  "addon_download_url": "https://github.com/chaichaimee/siamSquare/releases/download/v2025.11/siamSquare-v2025.11.nvda-addon",
+  "addon_min_nvda_version": "2022.4"
+}
+

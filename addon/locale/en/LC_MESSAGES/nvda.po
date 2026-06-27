@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: siamSquare 2026.6.0\n"
+"Project-Id-Version: siamSquare 2026.7.0\n"
 "Report-Msgid-Bugs-To: chaicm75@gmail.com\n"
-"POT-Creation-Date: 2026-06-05 14:39+0700\n"
+"POT-Creation-Date: 2026-06-27 08:48+0700\n"
 "PO-Revision-Date: \n"
 "Last-Translator: chaiBot and Malee Yamazaki\n"
 "Language-Team: English\n"
@@ -12,47 +12,47 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: DevOn Addon\n"
 
-#: __init__.py:146
+#: __init__.py:147
 msgid "Announce Thai Character Order"
 msgstr "Announce Thai Character Order"
 
-#: __init__.py:134
+#: __init__.py:135
 msgid "Enter Thai Sorter Mode"
 msgstr "Enter Thai Sorter Mode"
 
-#: __init__.py:124
+#: __init__.py:125
 msgid "Exit All Modes"
 msgstr "Exit All Modes"
 
-#: __init__.py:164
+#: __init__.py:165
 msgid "No Command in Layered Mode"
 msgstr "No Command in Layered Mode"
 
-#: __init__.py:157
+#: __init__.py:158
 msgid "No Command in Thai Sorter Mode"
 msgstr "No Command in Thai Sorter Mode"
 
-#: __init__.py:226
+#: __init__.py:230
 #: siamCenter.py:89
 msgid "Siam Center"
 msgstr "Siam Center"
 
-#: __init__.py:26
+#: __init__.py:27
 msgid "Siam Square"
 msgstr "Siam Square"
 
-#: __init__.py:110
+#: __init__.py:111
 msgid "Siam Square Mode"
 msgstr "Siam Square Mode"
 
-#: sort.py:59
-#: sort.py:61
-#: sort.py:63
-#: sort.py:65
+#: sort.py:58
+#: sort.py:60
+#: sort.py:62
+#: sort.py:64
 msgid "{char} {number}"
 msgstr "{char} {number}"
 
-#: siamCenter.py:398
+#: siamCenter.py:478
 msgid "{}"
 msgstr "{}"
 
@@ -64,131 +64,198 @@ msgstr "กรุณากรอกความหมาย"
 msgid "กรุณากรอกคำ"
 msgstr "กรุณากรอกคำ"
 
-#: siamCenter.py:280
+#: siamSquareCore.py:82
+msgid "กรุณาเลือกคำ"
+msgstr "กรุณาเลือกคำ"
+
+#: siamCenter.py:352
 msgid "กรุณาเลือกคำที่ต้องการแก้ไข"
 msgstr "กรุณาเลือกคำที่ต้องการแก้ไข"
 
 #: siamCenter.py:69
 #: siamCenter.py:73
-#: siamCenter.py:280
+#: siamCenter.py:352
 msgid "ข้อผิดพลาด"
 msgstr "ข้อผิดพลาด"
 
-#: siamCenter.py:39
-#: siamCenter.py:169
+#: siamCenter.py:40
+#: siamCenter.py:241
 msgid "ความหมาย:"
 msgstr "ความหมาย:"
 
-#: __init__.py:171
+#: __init__.py:172
 msgid "ความหมายคำ"
 msgstr "ความหมายคำ"
 
-#: siamCenter.py:332
+#: siamCenter.py:409
 msgid "คัดลอกความหมาย"
 msgstr "คัดลอกความหมาย"
 
-#: siamCenter.py:356
+#: siamCenter.py:433
 msgid "คัดลอกความหมายเรียบร้อย"
 msgstr "คัดลอกความหมายเรียบร้อย"
 
-#: siamCenter.py:325
+#: siamCenter.py:402
 msgid "คัดลอกคำ"
 msgstr "คัดลอกคำ"
 
-#: siamCenter.py:346
+#: siamCenter.py:423
 msgid "คัดลอกคำ: {}"
 msgstr "คัดลอกคำ: {}"
 
-#: siamCenter.py:335
+#: siamCenter.py:412
 msgid "คัดลอกคำและความหมายทั้งหมด"
 msgstr "คัดลอกคำและความหมายทั้งหมด"
 
-#: siamCenter.py:368
+#: siamCenter.py:445
 msgid "คัดลอกคำและความหมายเรียบร้อย"
 msgstr "คัดลอกคำและความหมายเรียบร้อย"
 
-#: siamCenter.py:32
-#: siamCenter.py:160
+#: siamCenter.py:33
+#: siamCenter.py:232
 msgid "คำ:"
 msgstr "คำ:"
 
-#: __init__.py:183
+#: siamSquareCore.py:39
+msgid "คำที่พบ: {}"
+msgstr "คำที่พบ: {}"
+
+#: __init__.py:184
 msgid "คำสะกดผิด คำใกล้เคียง"
 msgstr "คำสะกดผิด คำใกล้เคียง"
 
-#: siamCenter.py:189
+#: siamSquareCore.py:26
+msgid "คำแนะนำสำหรับคำสะกดผิด"
+msgstr "คำแนะนำสำหรับคำสะกดผิด"
+
+#: siamCenter.py:265
 msgid "ปิด"
 msgstr "ปิด"
 
-#: siamCenter.py:55
+#: siamCenter.py:183
+msgid "พจนานุกรมถูกโหลดใหม่เรียบร้อยแล้ว"
+msgstr "พจนานุกรมถูกโหลดใหม่เรียบร้อยแล้ว"
+
+#: siamCenter.py:56
+#: siamSquareCore.py:57
 msgid "ยกเลิก"
 msgstr "ยกเลิก"
 
-#: __init__.py:214
+#: __init__.py:218
 msgid "สะกดคำ"
 msgstr "สะกดคำ"
 
-#: siamCenter.py:153
+#: siamCenter.py:258
+msgid "สำรองไฟล์พจนานุกรมในโฟลเดอร์ Add-on"
+msgstr "สำรองไฟล์พจนานุกรมในโฟลเดอร์ Add-on"
+
+#: siamCenter.py:225
 msgid "หมวด:"
 msgstr "หมวด:"
 
-#: siamCenter.py:274
+#: siamCenter.py:175
+msgid "เกิดข้อผิดพลาดในการบันทึกพจนานุกรม: {}"
+msgstr "เกิดข้อผิดพลาดในการบันทึกพจนานุกรม: {}"
+
+#: siamCenter.py:346
 msgid "เกิดข้อผิดพลาดในการเพิ่มคำ"
 msgstr "เกิดข้อผิดพลาดในการเพิ่มคำ"
 
-#: siamCenter.py:319
+#: siamCenter.py:396
 msgid "เกิดข้อผิดพลาดในการแก้ไขคำ"
 msgstr "เกิดข้อผิดพลาดในการแก้ไขคำ"
 
-#: siamCenter.py:21
-#: siamCenter.py:51
-#: siamCenter.py:178
+#: siamSquareCore.py:92
+msgid "เกิดข้อผิดพลาดในการแทนที่คำ"
+msgstr "เกิดข้อผิดพลาดในการแทนที่คำ"
+
+#: siamCenter.py:150
+#: siamSquareCore.py:148
+msgid "เกิดข้อผิดพลาดในการโหลดพจนานุกรม: {}"
+msgstr "เกิดข้อผิดพลาดในการโหลดพจนานุกรม: {}"
+
+#: siamCenter.py:22
+#: siamCenter.py:52
+#: siamCenter.py:250
 msgid "เพิ่มคำ"
 msgstr "เพิ่มคำ"
 
-#: siamCenter.py:259
+#: siamCenter.py:334
 msgid "เพิ่มคำลงพจนานุกรมสมบูรณ์"
 msgstr "เพิ่มคำลงพจนานุกรมสมบูรณ์"
 
-#: siamCenter.py:21
-#: siamCenter.py:49
-#: siamCenter.py:182
+#: siamSquareCore.py:42
+msgid "เลือกคำที่ถูกต้องเพื่อแทนที่:"
+msgstr "เลือกคำที่ถูกต้องเพื่อแทนที่:"
+
+#: siamCenter.py:22
+#: siamCenter.py:50
+#: siamCenter.py:254
 msgid "แก้ไขคำ"
 msgstr "แก้ไขคำ"
 
-#: siamCenter.py:304
+#: siamCenter.py:384
 msgid "แก้ไขคำสมบูรณ์"
 msgstr "แก้ไขคำสมบูรณ์"
 
-#: __init__.py:179
-#: __init__.py:189
-#: __init__.py:222
+#: siamSquareCore.py:53
+msgid "แทนที่คำ"
+msgstr "แทนที่คำ"
+
+#: siamSquareCore.py:88
+msgid "แทนที่ด้วยคำว่า: {}"
+msgstr "แทนที่ด้วยคำว่า: {}"
+
+#: siamSquareCore.py:180
+#: siamSquareCore.py:182
+msgid "ไม่พบความหมายของคำว่า {}"
+msgstr "ไม่พบความหมายของคำว่า {}"
+
+#: __init__.py:180
+#: __init__.py:190
+#: __init__.py:226
 msgid "ไม่พบคำที่ตำแหน่งเคอร์เซอร์"
 msgstr "ไม่พบคำที่ตำแหน่งเคอร์เซอร์"
 
-#: siamCenter.py:402
+#: siamCenter.py:482
 msgid "ไม่พบคำที่เริ่มด้วย: {}"
 msgstr "ไม่พบคำที่เริ่มด้วย: {}"
 
-#: siamCenter.py:150
+#: siamCenter.py:222
 msgid "ไม่พบคำว่า: {} ในพจนานุกรม"
 msgstr "ไม่พบคำว่า: {} ในพจนานุกรม"
 
-#: __init__.py:195
+#: siamSquareCore.py:153
+msgid "ไม่พบคำสำหรับค้นหา"
+msgstr "ไม่พบคำสำหรับค้นหา"
+
+#: siamSquareCore.py:252
+msgid "ไม่พบคำสำหรับสะกด"
+msgstr "ไม่พบคำสำหรับสะกด"
+
+#: __init__.py:196
 msgid "ไม่พบคำแนะนำที่ใกล้เคียง"
 msgstr "ไม่พบคำแนะนำที่ใกล้เคียง"
 
-#: __init__.py:234
-#: __init__.py:245
+#: siamCenter.py:130
+msgid "ไม่พบไฟล์พจนานุกรม"
+msgstr "ไม่พบไฟล์พจนานุกรม"
+
+#: siamSquareCore.py:330
+msgid "ไม่สามารถวางข้อความได้"
+msgstr "ไม่สามารถวางข้อความได้"
+
+#: __init__.py:238
+#: __init__.py:250
 msgid "ไม่สามารถเปิด Siam Center ได้: {}"
 msgstr "ไม่สามารถเปิด Siam Center ได้: {}"
 
-#: siamCenter.py:348
-#: siamCenter.py:358
-#: siamCenter.py:370
+#: siamCenter.py:425
+#: siamCenter.py:435
+#: siamCenter.py:447
 msgid "ไม่สามารถเปิดคลิปบอร์ดได้"
 msgstr "ไม่สามารถเปิดคลิปบอร์ดได้"
 
-#: __init__.py:208
+#: __init__.py:212
 msgid "ไม่สามารถเปิดหน้าต่างคำแนะนำได้"
 msgstr "ไม่สามารถเปิดหน้าต่างคำแนะนำได้"

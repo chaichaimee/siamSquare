@@ -1,31 +1,29 @@
 # siamSquareCore.py
 
-import os
-import sys
 import json
-import codecs
+import os
 import re
-import time
-import threading
+import globalVars
+import ui
 import wx
 import gui
-import api
-import ui
 import textInfos
-import logHandler
-import watchdog
-import keyboardHandler
-from keyboardHandler import KeyboardInputGesture
+import api
+import time
 import core
-from . import settingManager
+import watchdog
+from keyboardHandler import KeyboardInputGesture
+import braille
+from logHandler import log
 import speech
+import addonHandler
 
-log = logHandler.log
-addonHandler = sys.modules.get('addonHandler')
+addonHandler.initTranslation()
+
 
 class SuggestionsDialog(wx.Dialog):
 	def __init__(self, parent, original_word, suggestions, core_instance):
-		super(SuggestionsDialog, self).__init__(parent, title="คำแนะนำสำหรับคำสะกดผิด", size=(450, 350))
+		super(SuggestionsDialog, self).__init__(parent, title=_("คำแนะนำสำหรับคำสะกดผิด"), size=(450, 350))
 		self.original_word = original_word
 		self.suggestions = suggestions
 		self.core_instance = core_instance
@@ -34,235 +32,259 @@ class SuggestionsDialog(wx.Dialog):
 		self.create_controls()
 		self.SetSizer(self.main_sizer)
 		self.CentreOnScreen()
+		self.Raise()
+		self.SetFocus()
 
 	def create_controls(self):
-		lbl_info = wx.StaticText(self, label=f"คำที่พบ: {self.original_word}")
+		lbl_info = wx.StaticText(self, label=_("คำที่พบ: {}").format(self.original_word))
 		self.main_sizer.Add(lbl_info, 0, wx.ALL, 10)
-		lbl_list = wx.StaticText(self, label="เลือกคำที่ถูกต้องเพื่อแทนที่:")
+		
+		lbl_list = wx.StaticText(self, label=_("เลือกคำที่ถูกต้องเพื่อแทนที่:"))
 		self.main_sizer.Add(lbl_list, 0, wx.LEFT | wx.RIGHT, 10)
+		
 		self.suggestion_list = wx.ListBox(self, choices=self.suggestions, style=wx.LB_SINGLE)
 		if self.suggestions:
 			self.suggestion_list.SetSelection(0)
+		self.suggestion_list.Bind(wx.EVT_LISTBOX_DCLICK, self.on_double_click)
+		self.suggestion_list.Bind(wx.EVT_KEY_DOWN, self.on_list_key_down)
 		self.main_sizer.Add(self.suggestion_list, 1, wx.EXPAND | wx.ALL, 10)
+		
 		btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-		self.replace_button = wx.Button(self, wx.ID_ANY, label="แทนที่คำ")
+		self.replace_button = wx.Button(self, wx.ID_ANY, label=_("แทนที่คำ"))
 		self.replace_button.Bind(wx.EVT_BUTTON, self.on_replace_click)
 		btn_sizer.Add(self.replace_button, 0, wx.ALL, 5)
-		btn_cancel = wx.Button(self, wx.ID_CANCEL, label="ยกเลิก")
+		
+		btn_cancel = wx.Button(self, wx.ID_CANCEL, label=_("ยกเลิก"))
+		btn_cancel.Bind(wx.EVT_BUTTON, lambda evt: self.EndModal(wx.ID_CANCEL))
 		btn_sizer.Add(btn_cancel, 0, wx.ALL, 5)
 		self.main_sizer.Add(btn_sizer, 0, wx.ALIGN_CENTER | wx.BOTTOM, 10)
+		
 		self.suggestion_list.SetFocus()
 		self.Bind(wx.EVT_CHAR_HOOK, self.on_char_hook)
-		self.Bind(wx.EVT_BUTTON, self.on_button_click)
+
+	def on_list_key_down(self, event):
+		key_code = event.GetKeyCode()
+		if key_code == wx.WXK_RETURN:
+			self.on_replace_click(event)
+		else:
+			event.Skip()
+
+	def on_double_click(self, event):
+		self.on_replace_click(event)
 
 	def on_replace_click(self, event):
 		selection = self.suggestion_list.GetSelection()
 		if selection != wx.NOT_FOUND:
 			self.selected_suggestion = self.suggestion_list.GetString(selection)
-			core_instance_ref = self.core_instance
-			self.EndModal(wx.ID_OK)
-			wx.CallAfter(core_instance_ref.execute_replacement, self.selected_suggestion)
+			self.Hide()
+			wx.CallLater(50, self.execute_replace)
 		else:
-			self.EndModal(wx.ID_CANCEL)
+			ui.message(_("กรุณาเลือกคำ"))
 
-	def on_button_click(self, event):
-		button_id = event.GetId()
-		if button_id == wx.ID_OK:
-			selection = self.suggestion_list.GetSelection()
-			if selection != wx.NOT_FOUND:
-				self.selected_suggestion = self.suggestion_list.GetString(selection)
-				core_instance_ref = self.core_instance
-				wx.CallAfter(core_instance_ref.execute_replacement, self.selected_suggestion)
-			event.Skip()
+	def execute_replace(self):
+		try:
+			if self.selected_suggestion and self.core_instance:
+				self.core_instance.execute_replacement(self.selected_suggestion)
+				ui.message(_("แทนที่ด้วยคำว่า: {}").format(self.selected_suggestion))
+			self.EndModal(wx.ID_OK)
+		except Exception as e:
+			log.error(f"Error executing replacement: {e}")
+			ui.message(_("เกิดข้อผิดพลาดในการแทนที่คำ"))
+			self.EndModal(wx.ID_CANCEL)
 
 	def on_char_hook(self, event):
 		key_code = event.GetKeyCode()
 		if key_code == wx.WXK_RETURN:
-			selection = self.suggestion_list.GetSelection()
-			if selection != wx.NOT_FOUND:
-				self.selected_suggestion = self.suggestion_list.GetString(selection)
-				core_instance_ref = self.core_instance
-				self.EndModal(wx.ID_OK)
-				wx.CallAfter(core_instance_ref.execute_replacement, self.selected_suggestion)
-			else:
-				self.EndModal(wx.ID_CANCEL)
+			self.on_replace_click(event)
 		elif key_code == wx.WXK_ESCAPE:
 			self.EndModal(wx.ID_CANCEL)
 		else:
 			event.Skip()
 
+
 class SiamSquareCore:
 	def __init__(self, setting_manager):
 		self.setting_manager = setting_manager
 		self.dictionary = {}
-		self.base_initialized = False
-		thai_consonants = ['ก', 'ข', 'ค', 'ฆ', 'ง', 'จ', 'ฉ', 'ช', 'ซ', 'ฌ', 'ญ', 'ฎ', 'ฏ', 'ฐ', 'ฑ', 'ฒ', 'ณ', 'ด', 'ต', 'ถ', 'ท', 'ธ', 'น', 'บ', 'ป', 'ผ', 'ฝ', 'พ', 'ฟ', 'ภ', 'ม', 'ย', 'ร', 'ล', 'ว', 'ศ', 'ษ', 'ส', 'ห', 'ฬ', 'อ', 'ฮ', 'ฤ', 'ฦ']
-		self.valid_filenames = set(["{}.json".format(c) for c in thai_consonants] + ["others.json"])
 		self.load_dictionary()
 
-	def _get_base_dictionary_path(self):
-		current_dir = os.path.dirname(os.path.abspath(__file__))
-		return os.path.join(current_dir, "dictionary")
-
-	def _get_user_dictionary_path(self):
-		import globalVars
-		user_config_dir = globalVars.appArgs.configPath
-		return os.path.join(user_config_dir, "ChaiChaimee", "SiamSquare", "dictionary")
-
-	def _is_valid_dictionary_file(self, filename):
-		return filename in self.valid_filenames
-
-	def _cleanup_invalid_files(self, directory):
-		if not os.path.exists(directory):
-			return
-		for filename in os.listdir(directory):
-			if filename.endswith('.json') and not self._is_valid_dictionary_file(filename):
-				try:
-					os.remove(os.path.join(directory, filename))
-					log.info(f"Removed invalid dictionary file: {filename}")
-				except Exception as e:
-					log.error(f"Failed to remove invalid file {filename}: {e}")
-
 	def load_dictionary(self):
-		base_dir = self._get_base_dictionary_path()
-		user_dir = self._get_user_dictionary_path()
-		self._cleanup_invalid_files(base_dir)
-		self._cleanup_invalid_files(user_dir)
-		self.dictionary.clear()
-		if os.path.exists(base_dir):
-			for filename in os.listdir(base_dir):
-				if filename.endswith('.json') and self._is_valid_dictionary_file(filename):
-					self._load_file_into_dict(os.path.join(base_dir, filename))
-		if os.path.exists(user_dir):
-			for filename in os.listdir(user_dir):
-				if filename.endswith('.json') and self._is_valid_dictionary_file(filename):
-					self._load_file_into_dict(os.path.join(user_dir, filename))
-
-	def _load_file_into_dict(self, filepath):
-		try:
-			with codecs.open(filepath, 'r', encoding='utf-8') as f:
-				data = json.load(f)
-				if isinstance(data, dict):
-					for word, definitions in data.items():
-						if word not in self.dictionary:
-							self.dictionary[word] = []
-						if isinstance(definitions, list):
-							self.dictionary[word].append(definitions)
-						else:
-							self.dictionary[word].append([str(definitions)])
-		except Exception as e:
-			log.error(f"Error loading dictionary file {filepath}: {e}")
-
-	def save_user_word(self, word, definitions, filename):
-		if not self._is_valid_dictionary_file(filename):
-			log.error(f"Attempted to save to invalid filename: {filename}")
-			return False
-		user_dir = self._get_user_dictionary_path()
-		try:
-			os.makedirs(user_dir, exist_ok=True)
-			filepath = os.path.join(user_dir, filename)
-			data = {}
-			if os.path.exists(filepath):
-				try:
-					with codecs.open(filepath, 'r', encoding='utf-8') as f:
-						data = json.load(f)
-				except Exception:
-					data = {}
-			data[word] = definitions
-			with codecs.open(filepath, 'w', encoding='utf-8') as f:
-				json.dump(data, f, ensure_ascii=False, indent=4)
-			return True
-		except Exception as e:
-			log.error(f"Error saving user word: {e}")
-			return False
-
-	def add_word(self, word, definition):
-		if not word or not definition:
-			return False
-		match = re.search(r'^[เแโไใ]?([ก-ฮ])', word)
-		if match:
-			filename = "{}.json".format(match.group(1))
-		else:
-			filename = "others.json"
-		if word not in self.dictionary:
-			self.dictionary[word] = []
-		self.dictionary[word].append([definition])
-		return self.save_user_word(word, [definition], filename)
-
-	def update_word(self, old_word, new_word, new_definition):
-		if not old_word or not new_word or not new_definition:
-			return False
-		if old_word in self.dictionary:
-			del self.dictionary[old_word]
-		if new_word not in self.dictionary:
-			self.dictionary[new_word] = []
-		self.dictionary[new_word].append([new_definition])
-		match = re.search(r'^[เแโไใ]?([ก-ฮ])', new_word)
-		filename = "{}.json".format(match.group(1)) if match else "others.json"
-		return self.save_user_word(new_word, [new_definition], filename)
-
-	def get_definition(self, word):
-		if not word:
-			ui.message("ไม่พบคำสำหรับค้นหา")
-			return
-		definitions = self.dictionary.get(word)
-		if not definitions:
-			ui.message(f"ไม่พบความหมายของคำว่า {word}")
+		self.dictionary = {}
+		
+		addon_path = os.path.abspath(os.path.dirname(__file__))
+		dict_path = os.path.join(addon_path, "dictionary", "thaiDic.jsonl")
+		
+		user_config_dir = globalVars.appArgs.configPath
+		backup_dir = os.path.join(user_config_dir, "siamSquare")
+		backup_path = os.path.join(backup_dir, "thaiDic.jsonl")
+		
+		load_path = None
+		
+		if os.path.exists(backup_path):
+			load_path = backup_path
+		elif os.path.exists(dict_path):
+			load_path = dict_path
+		
+		if not load_path:
 			return
 			
-		flat_definitions = []
-		for item in definitions:
-			if isinstance(item, list):
-				for sub_item in item:
-					if isinstance(sub_item, list):
-						for sub_sub in sub_item:
-							item_str = str(sub_sub).strip().replace("[", "").replace("]", "")
-							if item_str and item_str not in flat_definitions:
-								flat_definitions.append(item_str)
-					else:
-						item_str = str(sub_item).strip().replace("[", "").replace("]", "")
-						if item_str and item_str not in flat_definitions:
-							flat_definitions.append(item_str)
+		try:
+			with open(load_path, 'r', encoding='utf-8') as f:
+				for line in f:
+					line = line.strip()
+					if not line:
+						continue
+					try:
+						entry = json.loads(line)
+						if isinstance(entry, dict):
+							for word, definitions in entry.items():
+								if isinstance(definitions, list):
+									self.dictionary[word] = definitions
+								else:
+									self.dictionary[word] = [[str(definitions)]]
+					except json.JSONDecodeError:
+						continue
+		except Exception as e:
+			ui.message(_("เกิดข้อผิดพลาดในการโหลดพจนานุกรม: {}").format(str(e)))
+
+	def get_definition(self, word):
+		word = word.strip()
+		if not word:
+			ui.message(_("ไม่พบคำสำหรับค้นหา"))
+			return
+			
+		definitions = self.dictionary.get(word, [])
+		if definitions:
+			definition_text = ""
+			for group in definitions:
+				if isinstance(group, list):
+					for definition in group:
+						if isinstance(definition, list):
+							for sub_def in definition:
+								item_str = str(sub_def).strip()
+								if item_str:
+									definition_text += item_str + ", "
+						else:
+							item_str = str(definition).strip()
+							if item_str:
+								definition_text += item_str + ", "
+				else:
+					item_str = str(group).strip()
+					if item_str:
+						definition_text += item_str + ", "
+			
+			output_text = definition_text.rstrip(", ")
+			if output_text:
+				ui.message(output_text)
 			else:
-				item_str = str(item).strip().replace("[", "").replace("]", "")
-				if item_str and item_str not in flat_definitions:
-					flat_definitions.append(item_str)
-					
-		output_text = ", ".join(flat_definitions)
-		if not output_text.strip():
-			ui.message(f"ไม่พบความหมายของคำว่า {word}")
+				ui.message(_("ไม่พบความหมายของคำว่า {}").format(word))
 		else:
-			ui.message(output_text)
+			ui.message(_("ไม่พบความหมายของคำว่า {}").format(word))
 
 	def generate_suggestions(self, word):
-		if not word:
-			return []
 		suggestions = []
+		word = word.strip()
+		
+		if not word:
+			return suggestions
+		
 		for dict_word in self.dictionary.keys():
-			if len(dict_word) >= 4 and len(word) >= 4:
-				if dict_word[:4] == word[:4]:
-					suggestions.append(dict_word)
-			elif dict_word[:2] == word[:2]:
+			if dict_word.startswith(word):
 				suggestions.append(dict_word)
-		return suggestions[:10]
+		
+		if len(word) > 2:
+			base_word = word[:-1]
+			for dict_word in self.dictionary.keys():
+				if dict_word.startswith(base_word) and dict_word not in suggestions:
+					suggestions.append(dict_word)
+		
+		pattern_suggestions = self.get_pattern_suggestions(word)
+		suggestions.extend(pattern_suggestions)
+		
+		unique_suggestions = list(set(suggestions))
+		return sorted(unique_suggestions)[:15]
+
+	def get_pattern_suggestions(self, word):
+		suggestions = []
+		
+		if len(word) < 4:
+			return suggestions
+		
+		first_char = word[0]
+		last_char = word[-1]
+		second_char = word[1] if len(word) > 1 else ''
+		second_last_char = word[-2] if len(word) > 1 else ''
+		
+		pattern = f"^{re.escape(first_char)}{re.escape(second_char)}.*{re.escape(second_last_char)}{re.escape(last_char)}$"
+		
+		try:
+			regex = re.compile(pattern)
+			for dict_word in self.dictionary.keys():
+				if regex.match(dict_word) and dict_word not in suggestions:
+					suggestions.append(dict_word)
+		except re.error:
+			pass
+		
+		month_patterns = {
+			r'^พฤศพาคม$': 'พฤษภาคม',
+			r'^พฤศภาคม$': 'พฤษภาคม',
+			r'^กุมภา.*$': 'กุมภาพันธ์',
+			r'^มีนา.*$': 'มีนาคม',
+			r'^เมษา.*$': 'เมษายน',
+			r'^พฤษภา.*$': 'พฤษภาคม',
+			r'^มิถุนา.*$': 'มิถุนายน',
+			r'^กรกฎา.*$': 'กรกฎาคม',
+			r'^สิงหา.*$': 'สิงหาคม',
+			r'^กันยา.*$': 'กันยายน',
+			r'^ตุลา.*$': 'ตุลาคม',
+			r'^พฤศจิก.*$': 'พฤศจิกายน',
+			r'^ธันวา.*$': 'ธันวาคม'
+		}
+		
+		for pattern, correction in month_patterns.items():
+			if re.match(pattern, word) and correction in self.dictionary:
+				suggestions.append(correction)
+		
+		return suggestions
 
 	def spell_word(self, word):
 		if not word:
-			ui.message("ไม่พบคำสำหรับสะกด")
+			ui.message(_("ไม่พบคำสำหรับสะกด"))
 			return
-		
-		# สร้างลำดับการอ่านสะกดคำทีละอักษร โดยบังคับใส่คอมมาและช่องว่างเบิ้ล เพื่อบังคับทางอ้อมให้เอนจิ้นเสียงหน่วงเวลาสระ/วรรณยุกต์เท่าเทียมพยัญชนะ
-		spelled_sequence = []
-		for char in list(word):
-			spelled_sequence.append(char)
-			spelled_sequence.append(", ")
 			
-		output_text = "".join(spelled_sequence).strip(", ")
-		ui.message(output_text)
+		consonants = r'[ก-ฮ]'
+		vowels = r'[ะาๅิีึืุูเแโใไ]'
+		tone_marks = r'[่้๊๋]'
+		
+		def get_char_name(char):
+			if re.match(consonants, char):
+				return char
+			elif re.match(vowels, char):
+				return {
+					'ะ': 'สระอะ', 'า': 'สระอา', 'ๅ': 'สระอา (ยาว)', 
+					'ิ': 'สระอิ', 'ี': 'สระอี', 'ึ': 'สระอึ', 'ื': 'สระอื', 
+					'ุ': 'สระอุ', 'ู': 'สระอู', 'เ': 'สระเอ', 'แ': 'สระแอ', 
+					'โ': 'สระโอ', 'ใ': 'สระใอ', 'ไ': 'สระไอ'
+				}.get(char, f"สระ {char}")
+			elif re.match(tone_marks, char):
+				return {
+					'่': 'ไม้เอก', '้': 'ไม้โท', '๊': 'ไม้ตรี', '๋': 'ไม้จัตวา'
+				}.get(char, f"วรรณยุกต์ {char}")
+			else:
+				return char
+
+		spelled_chars = []
+		for char in word:
+			char_name = get_char_name(char)
+			spelled_chars.append(char_name)
+		
+		spelled_text = ", ".join(spelled_chars)
+		ui.message(spelled_text)
 
 	def execute_replacement(self, text_to_paste):
 		if not text_to_paste:
 			return
+		
 		if " " in text_to_paste:
 			self._paste_sentence_classic(text_to_paste)
 		else:
@@ -288,6 +310,7 @@ class SiamSquareCore:
 				backup_text = api.getClipData()
 			except Exception:
 				pass
+			
 			api.copyToClip(text_to_paste)
 			try:
 				paste_gesture = KeyboardInputGesture.fromName("shift+insert")
@@ -297,13 +320,15 @@ class SiamSquareCore:
 				return
 			except Exception:
 				pass
+			
 			if window_handle:
 				WM_PASTE = 0x0302
 				watchdog.cancellableSendMessage(window_handle, WM_PASTE, 0, 0)
 				log.info("Paste sent via WM_PASTE")
 			else:
 				log.error("No paste method available")
-				ui.message("ไม่สามารถวางข้อความได้")
+				ui.message(_("ไม่สามารถวางข้อความได้"))
+			
 			core.callLater(150, self._restore_clipboard, backup_text)
 		except Exception as e:
 			log.error(f"Error sending paste command: {e}")
@@ -319,3 +344,12 @@ class SiamSquareCore:
 			api.copyToClip("")
 		except Exception as e:
 			log.error(f"Error clearing clipboard: {e}")
+
+	def announceWordDefinition(self, word):
+		self.get_definition(word)
+
+	def getWordSuggestions(self, word):
+		return self.generate_suggestions(word)
+
+	def spellWord(self, word):
+		self.spell_word(word)

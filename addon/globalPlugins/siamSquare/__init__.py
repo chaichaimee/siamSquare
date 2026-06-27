@@ -19,6 +19,7 @@ from . import settingManager
 from . import siamCenter
 from . import sort
 from functools import wraps
+import logHandler
 
 addonHandler.initTranslation()
 
@@ -196,15 +197,18 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 			self.script_exitAllModes(gesture, silent=True)
 			return
 
-		# Safe invocation using the correct class reference from siamSquareCore module
 		def launch_dialog():
 			try:
-				if hasattr(gui.mainFrame, 'popupSettingsDialog'):
-					gui.mainFrame.popupSettingsDialog(siamSquareCore.SuggestionsDialog, selectedText, suggestions, self.siamSquareCore)
-				else:
-					gui.mainFrame._popupSettingsDialog(siamSquareCore.SuggestionsDialog, selectedText, suggestions, self.siamSquareCore)
+				dialog = siamSquareCore.SuggestionsDialog(
+					gui.mainFrame, 
+					selectedText, 
+					suggestions, 
+					self.siamSquareCore
+				)
+				dialog.ShowModal()
+				dialog.Destroy()
 			except Exception as e:
-				log.error(f"Error popup suggestions dialog: {e}")
+				logHandler.log.error(f"Error showing suggestions dialog: {e}")
 				ui.message(_("ไม่สามารถเปิดหน้าต่างคำแนะนำได้"))
 
 		wx.CallAfter(launch_dialog)
@@ -236,10 +240,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
 	def _showSiamCenterDialog(self, selectedText):
 		try:
+			siam_center_dialog = siamCenter.SiamCenterDialog
 			if hasattr(gui.mainFrame, 'popupSettingsDialog'):
-				gui.mainFrame.popupSettingsDialog(siamCenter.SiamCenterDialog, selectedText, self.siamSquareCore)
+				gui.mainFrame.popupSettingsDialog(siam_center_dialog, selectedText, self.siamSquareCore)
 			else:
-				gui.mainFrame._popupSettingsDialog(siamCenter.SiamCenterDialog, selectedText, self.siamSquareCore)
+				gui.mainFrame._popupSettingsDialog(siam_center_dialog, selectedText, self.siamSquareCore)
 			wx.CallLater(100, self._focusDialog)
 		except Exception as e:
 			ui.message(_("ไม่สามารถเปิด Siam Center ได้: {}").format(str(e)))

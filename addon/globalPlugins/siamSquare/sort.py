@@ -1,5 +1,4 @@
 # sort.py
-# Thai character sorter module
 
 import addonHandler
 
@@ -83,7 +82,6 @@ class ThaiSorter:
 				char in self.other_marks_order)
 
 	def get_character_from_vk(self, vk_code, caps_lock, shift_pressed):
-		"""Get character from virtual key code, supporting both Shift and CapsLock"""
 		key_base = self.vk_to_key.get(vk_code)
 		if not key_base:
 			return None

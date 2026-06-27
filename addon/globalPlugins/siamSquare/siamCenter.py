@@ -9,10 +9,11 @@ import json
 import addonHandler
 from . import settingManager
 import core
+import shutil
 import globalVars
 import re
 import time
-from . import sort
+import logHandler
 
 addonHandler.initTranslation()
 
@@ -58,7 +59,6 @@ class AddWordDialog(wx.Dialog):
 		self.main_sizer.Add(button_sizer, 0, wx.ALIGN_CENTER | wx.ALL, 5)
 
 		self.Bind(wx.EVT_CHAR_HOOK, self.on_char_hook)
-		
 		self.word_ctrl.SetFocus()
 
 	def on_save(self, event):
@@ -88,19 +88,14 @@ class SiamCenterDialog(wx.Dialog):
 	def __init__(self, parent, selected_word=None, core_instance=None):
 		super(SiamCenterDialog, self).__init__(parent, title=_("Siam Center"), size=(800, 600))
 		self.settingManager = settingManager.SettingManager()
-		self.thai_sorter = sort.ThaiSorter()
+		self.core = core_instance  # Store core instance reference
+		self.dictionary = {}
 		self.selected_word = selected_word
 		self.jump_word_prefix = ""
 		self.last_key_time = 0.0
+		self.load_dictionary()
 		self.current_category = ""
 		self.current_word = ""
-		
-		if core_instance is not None:
-			self.core = core_instance
-		else:
-			from . import siamSquareCore
-			self.core = siamSquareCore.SiamSquareCore(self.settingManager)
-		
 		self.main_sizer = wx.BoxSizer(wx.VERTICAL)
 		self.create_controls()
 		self.SetSizer(self.main_sizer)
@@ -109,33 +104,110 @@ class SiamCenterDialog(wx.Dialog):
 		if self.selected_word:
 			self.auto_select_word(self.selected_word)
 
+	def load_dictionary(self):
+		"""Load dictionary from addon dictionary folder (primary source)"""
+		self.dictionary = {}
+		
+		# Use addon directory path (this is where thaiDic.jsonl actually resides)
+		addonPath = os.path.abspath(os.path.dirname(__file__))
+		dictPath = os.path.join(addonPath, "dictionary", "thaiDic.jsonl")
+		
+		# Also check user config for backup/edits
+		user_config_dir = globalVars.appArgs.configPath
+		backup_dir = os.path.join(user_config_dir, "siamSquare")
+		backup_path = os.path.join(backup_dir, "thaiDic.jsonl")
+		
+		load_path = None
+		
+		# 1. Try to load from User Config (edits/backup)
+		if os.path.exists(backup_path):
+			load_path = backup_path
+		# 2. Fallback to Addon Default
+		elif os.path.exists(dictPath):
+			load_path = dictPath
+		
+		if not load_path:
+			ui.message(_("ไม่พบไฟล์พจนานุกรม"))
+			return
+			
+		try:
+			with open(load_path, 'r', encoding='utf-8') as f:
+				for line in f:
+					line = line.strip()
+					if not line:
+						continue
+					try:
+						entry = json.loads(line)
+						if isinstance(entry, dict):
+							for word, definitions in entry.items():
+								if isinstance(definitions, list):
+									self.dictionary[word] = definitions
+								else:
+									self.dictionary[word] = [[str(definitions)]]
+					except json.JSONDecodeError:
+						continue
+		except Exception as e:
+			ui.message(_("เกิดข้อผิดพลาดในการโหลดพจนานุกรม: {}").format(str(e)))
+
+	def save_dictionary(self):
+		"""Save dictionary to user config location"""
+		try:
+			user_config_dir = globalVars.appArgs.configPath
+			backup_dir = os.path.join(user_config_dir, "siamSquare")
+			os.makedirs(backup_dir, exist_ok=True)
+			backup_path = os.path.join(backup_dir, "thaiDic.jsonl")
+			
+			with open(backup_path, 'w', encoding='utf-8') as f:
+				for word in sorted(self.dictionary.keys()):
+					entry = {word: self.dictionary[word]}
+					f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+			
+			# Also save to addon directory for distribution
+			if self.backup_checkbox.IsChecked():
+				addonPath = os.path.abspath(os.path.dirname(__file__))
+				dictPath = os.path.join(addonPath, "dictionary", "thaiDic.jsonl")
+				os.makedirs(os.path.dirname(dictPath), exist_ok=True)
+				shutil.copy2(backup_path, dictPath)
+			
+			self.reload_core_dictionary()
+			return True
+		except Exception as e:
+			ui.message(_("เกิดข้อผิดพลาดในการบันทึกพจนานุกรม: {}").format(str(e)))
+			return False
+
+	def reload_core_dictionary(self):
+		"""Reload dictionary in the core module"""
+		try:
+			if self.core is not None:
+				self.core.dictionary = self.dictionary.copy()
+				ui.message(_("พจนานุกรมถูกโหลดใหม่เรียบร้อยแล้ว"))
+		except Exception as e:
+			pass
+
 	def get_thai_first_consonant(self, word):
 		if not word:
 			return None
-		match = re.search(r'^[เแโไใ]?([ก-ฮ])', word)
+		match = re.search(r'[ก-ฮ]', word)
 		if match:
-			return match.group(1)
-		fallback_match = re.search(r'[ก-ฮ]', word)
-		if fallback_match:
-			return fallback_match.group(0)
+			return match.group(0)
 		return None
 
 	def auto_select_word(self, word):
 		if not word:
 			return
-		
+			
 		first_consonant = self.get_thai_first_consonant(word)
-		if not first_consonant:
-			return
 		
-		categories = self.get_thai_initial_consonants()
-		if first_consonant in categories:
-			index = categories.index(first_consonant)
-			self.category_list.SetSelection(index)
-			self.current_category = first_consonant
-			wx.CallLater(100, self._select_word_in_list, word)
+		if first_consonant:
+			categories = self.get_thai_initial_consonants()
+			
+			if first_consonant in categories:
+				index = categories.index(first_consonant)
+				self.category_list.SetSelection(index)
+				self.current_category = first_consonant
+				wx.CallLater(100, self.update_word_list_after_selection, word)
 
-	def _select_word_in_list(self, target_word):
+	def update_word_list_after_selection(self, target_word):
 		self.update_word_list()
 		
 		words = self.word_list.GetStrings()
@@ -144,7 +216,7 @@ class SiamCenterDialog(wx.Dialog):
 				self.word_list.SetSelection(i)
 				self.current_word = word
 				self.word_list.SetFocus()
-				self.update_definition_list()
+				wx.CallLater(100, self.update_definition_list)
 				break
 		else:
 			ui.message(_("ไม่พบคำว่า: {} ในพจนานุกรม").format(target_word))
@@ -183,6 +255,10 @@ class SiamCenterDialog(wx.Dialog):
 		self.edit_button.Bind(wx.EVT_BUTTON, self.on_edit_word)
 		action_sizer.Add(self.edit_button, 0, wx.ALL, 5)
 		
+		self.backup_checkbox = wx.CheckBox(self, label=_("สำรองไฟล์พจนานุกรมในโฟลเดอร์ Add-on"))
+		self.backup_checkbox.SetValue(True)
+		action_sizer.Add(self.backup_checkbox, 0, wx.ALL, 5)
+		
 		self.main_sizer.Add(action_sizer, 0, wx.ALIGN_CENTER | wx.ALL, 5)
 
 		button_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -198,36 +274,33 @@ class SiamCenterDialog(wx.Dialog):
 
 	def on_category_select(self, event):
 		self.current_category = self.category_list.GetStringSelection()
-		self.update_word_list()
+		wx.CallLater(1, self.update_word_list)
 		self.jump_word_prefix = ""
 
 	def update_word_list(self):
 		self.word_list.Clear()
 		self.definition_list.Clear()
-		
 		if not self.current_category:
 			return
+			
+		words_in_category = []
+		for word in self.dictionary.keys():
+			if word and self.get_thai_first_consonant(word) == self.current_category:
+				words_in_category.append(word)
 		
-		words = []
-		for word in self.core.dictionary.keys():
-			first_con = self.get_thai_first_consonant(word)
-			if first_con == self.current_category:
-				words.append(word)
-		
-		words.sort()
-		self.word_list.Set(words)
+		words_in_category.sort()
+		self.word_list.Set(words_in_category)
 
 	def on_word_select(self, event):
 		self.current_word = self.word_list.GetStringSelection()
-		self.update_definition_list()
+		wx.CallLater(1, self.update_definition_list)
 
 	def update_definition_list(self):
 		self.definition_list.Clear()
-		
 		if not self.current_word:
 			return
-		
-		definitions = self.core.dictionary.get(self.current_word, [])
+			
+		definitions = self.dictionary.get(self.current_word, [])
 		definition_texts = []
 		
 		for definition_group in definitions:
@@ -235,15 +308,15 @@ class SiamCenterDialog(wx.Dialog):
 				for definition in definition_group:
 					if isinstance(definition, list):
 						for sub_def in definition:
-							item_str = str(sub_def).strip().replace("[", "").replace("]", "")
+							item_str = str(sub_def).strip()
 							if item_str and item_str not in definition_texts:
 								definition_texts.append(item_str)
 					else:
-						item_str = str(definition).strip().replace("[", "").replace("]", "")
+						item_str = str(definition).strip()
 						if item_str and item_str not in definition_texts:
 							definition_texts.append(item_str)
 			else:
-				item_str = str(definition_group).strip().replace("[", "").replace("]", "")
+				item_str = str(definition_group).strip()
 				if item_str and item_str not in definition_texts:
 					definition_texts.append(item_str)
 		
@@ -255,21 +328,20 @@ class SiamCenterDialog(wx.Dialog):
 			word = dialog.word
 			definition = dialog.definition
 			
-			if self.core.add_word(word, definition):
+			self.dictionary[word] = [[definition]]
+			
+			if self.save_dictionary():
 				ui.message(_("เพิ่มคำลงพจนานุกรมสมบูรณ์"))
-				
 				first_consonant = self.get_thai_first_consonant(word)
 				if first_consonant == self.current_category:
-					self.update_word_list()
-					self._select_word_in_list(word)
+					self.update_word_list_after_selection(word)
 				else:
 					categories = self.get_thai_initial_consonants()
 					if first_consonant in categories:
 						index = categories.index(first_consonant)
 						self.category_list.SetSelection(index)
 						self.current_category = first_consonant
-						self.update_word_list()
-						self._select_word_in_list(word)
+						self.update_word_list_after_selection(word)
 			else:
 				ui.message(_("เกิดข้อผิดพลาดในการเพิ่มคำ"))
 		
@@ -279,8 +351,8 @@ class SiamCenterDialog(wx.Dialog):
 		if not self.current_word:
 			wx.MessageBox(_("กรุณาเลือกคำที่ต้องการแก้ไข"), _("ข้อผิดพลาด"), wx.OK | wx.ICON_ERROR)
 			return
-		
-		definitions = self.core.dictionary.get(self.current_word, [])
+			
+		definitions = self.dictionary.get(self.current_word, [])
 		definition_text = ""
 		if definitions:
 			flat_list = []
@@ -288,11 +360,11 @@ class SiamCenterDialog(wx.Dialog):
 				if isinstance(item, list):
 					for sub in item:
 						if isinstance(sub, list):
-							flat_list.extend([str(x).strip().replace("[", "").replace("]", "") for x in sub])
+							flat_list.extend([str(x).strip() for x in sub])
 						else:
-							flat_list.append(str(sub).strip().replace("[", "").replace("]", ""))
+							flat_list.append(str(sub).strip())
 				else:
-					flat_list.append(str(item).strip().replace("[", "").replace("]", ""))
+					flat_list.append(str(item).strip())
 			definition_text = "\n".join(flat_list)
 			
 		dialog = AddWordDialog(self, self.current_word, definition_text, edit_mode=True)
@@ -300,21 +372,26 @@ class SiamCenterDialog(wx.Dialog):
 			new_word = dialog.word
 			new_definition = dialog.definition
 			
-			if self.core.update_word(self.current_word, new_word, new_definition):
+			old_consonant = self.get_thai_first_consonant(self.current_word)
+			new_consonant = self.get_thai_first_consonant(new_word)
+			
+			if new_word != self.current_word:
+				del self.dictionary[self.current_word]
+			
+			self.dictionary[new_word] = [[new_definition]]
+			
+			if self.save_dictionary():
 				ui.message(_("แก้ไขคำสมบูรณ์"))
-				
-				new_consonant = self.get_thai_first_consonant(new_word)
-				if new_consonant == self.current_category:
-					self.update_word_list()
-					self._select_word_in_list(new_word)
+				if new_consonant == old_consonant:
+					self.current_category = new_consonant
+					self.update_word_list_after_selection(new_word)
 				else:
 					categories = self.get_thai_initial_consonants()
 					if new_consonant in categories:
 						index = categories.index(new_consonant)
 						self.category_list.SetSelection(index)
 						self.current_category = new_consonant
-						self.update_word_list()
-						self._select_word_in_list(new_word)
+						self.update_word_list_after_selection(new_word)
 			else:
 				ui.message(_("เกิดข้อผิดพลาดในการแก้ไขคำ"))
 		
@@ -381,14 +458,17 @@ class SiamCenterDialog(wx.Dialog):
 		if key == wx.WXK_NONE:
 			event.Skip()
 			return
+		
 		if self.word_list.HasFocus():
 			current_time = time.time()
+			
 			if 0x0E01 <= key <= 0x0E5B:
 				char = chr(key)
 				if current_time - self.last_key_time > 1.0:
 					self.jump_word_prefix = ""
 				self.jump_word_prefix += char
 				self.last_key_time = current_time
+				
 				words = self.word_list.GetStrings()
 				for i, word in enumerate(words):
 					if word.startswith(self.jump_word_prefix):

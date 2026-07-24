@@ -23,7 +23,12 @@ addonHandler.initTranslation()
 
 class SuggestionsDialog(wx.Dialog):
 	def __init__(self, parent, original_word, suggestions, core_instance):
-		super(SuggestionsDialog, self).__init__(parent, title=_("คำแนะนำสำหรับคำสะกดผิด"), size=(450, 350))
+		super(SuggestionsDialog, self).__init__(
+			parent,
+			title=_("คำแนะนำสำหรับคำสะกดผิด"),
+			size=(450, 350),
+			style=wx.DEFAULT_DIALOG_STYLE | wx.STAY_ON_TOP
+		)
 		self.original_word = original_word
 		self.suggestions = suggestions
 		self.core_instance = core_instance
@@ -38,27 +43,27 @@ class SuggestionsDialog(wx.Dialog):
 	def create_controls(self):
 		lbl_info = wx.StaticText(self, label=_("คำที่พบ: {}").format(self.original_word))
 		self.main_sizer.Add(lbl_info, 0, wx.ALL, 10)
-		
+
 		lbl_list = wx.StaticText(self, label=_("เลือกคำที่ถูกต้องเพื่อแทนที่:"))
 		self.main_sizer.Add(lbl_list, 0, wx.LEFT | wx.RIGHT, 10)
-		
+
 		self.suggestion_list = wx.ListBox(self, choices=self.suggestions, style=wx.LB_SINGLE)
 		if self.suggestions:
 			self.suggestion_list.SetSelection(0)
 		self.suggestion_list.Bind(wx.EVT_LISTBOX_DCLICK, self.on_double_click)
 		self.suggestion_list.Bind(wx.EVT_KEY_DOWN, self.on_list_key_down)
 		self.main_sizer.Add(self.suggestion_list, 1, wx.EXPAND | wx.ALL, 10)
-		
+
 		btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
 		self.replace_button = wx.Button(self, wx.ID_ANY, label=_("แทนที่คำ"))
 		self.replace_button.Bind(wx.EVT_BUTTON, self.on_replace_click)
 		btn_sizer.Add(self.replace_button, 0, wx.ALL, 5)
-		
+
 		btn_cancel = wx.Button(self, wx.ID_CANCEL, label=_("ยกเลิก"))
 		btn_cancel.Bind(wx.EVT_BUTTON, lambda evt: self.EndModal(wx.ID_CANCEL))
 		btn_sizer.Add(btn_cancel, 0, wx.ALL, 5)
 		self.main_sizer.Add(btn_sizer, 0, wx.ALIGN_CENTER | wx.BOTTOM, 10)
-		
+
 		self.suggestion_list.SetFocus()
 		self.Bind(wx.EVT_CHAR_HOOK, self.on_char_hook)
 
@@ -76,20 +81,13 @@ class SuggestionsDialog(wx.Dialog):
 		selection = self.suggestion_list.GetSelection()
 		if selection != wx.NOT_FOUND:
 			self.selected_suggestion = self.suggestion_list.GetString(selection)
-			self.Hide()
-			wx.CallLater(50, self.execute_replace)
-		else:
-			ui.message(_("กรุณาเลือกคำ"))
-
-	def execute_replace(self):
-		try:
-			if self.selected_suggestion and self.core_instance:
-				self.core_instance.execute_replacement(self.selected_suggestion)
-				ui.message(_("แทนที่ด้วยคำว่า: {}").format(self.selected_suggestion))
+			# Keep a reference to core_instance before closing dialog
+			core_ref = self.core_instance
+			word_to_replace = self.selected_suggestion
 			self.EndModal(wx.ID_OK)
-		except Exception as e:
-			log.error(f"Error executing replacement: {e}")
-			ui.message(_("เกิดข้อผิดพลาดในการแทนที่คำ"))
+			# Execute replacement after dialog is closed and focus is back to the document
+			wx.CallAfter(core_ref.execute_replacement, word_to_replace)
+		else:
 			self.EndModal(wx.ID_CANCEL)
 
 	def on_char_hook(self, event):
@@ -110,24 +108,24 @@ class SiamSquareCore:
 
 	def load_dictionary(self):
 		self.dictionary = {}
-		
+
 		addon_path = os.path.abspath(os.path.dirname(__file__))
 		dict_path = os.path.join(addon_path, "dictionary", "thaiDic.jsonl")
-		
+
 		user_config_dir = globalVars.appArgs.configPath
 		backup_dir = os.path.join(user_config_dir, "siamSquare")
 		backup_path = os.path.join(backup_dir, "thaiDic.jsonl")
-		
+
 		load_path = None
-		
+
 		if os.path.exists(backup_path):
 			load_path = backup_path
 		elif os.path.exists(dict_path):
 			load_path = dict_path
-		
+
 		if not load_path:
 			return
-			
+
 		try:
 			with open(load_path, 'r', encoding='utf-8') as f:
 				for line in f:
@@ -152,7 +150,7 @@ class SiamSquareCore:
 		if not word:
 			ui.message(_("ไม่พบคำสำหรับค้นหา"))
 			return
-			
+
 		definitions = self.dictionary.get(word, [])
 		if definitions:
 			definition_text = ""
@@ -172,7 +170,7 @@ class SiamSquareCore:
 					item_str = str(group).strip()
 					if item_str:
 						definition_text += item_str + ", "
-			
+
 			output_text = definition_text.rstrip(", ")
 			if output_text:
 				ui.message(output_text)
@@ -184,39 +182,39 @@ class SiamSquareCore:
 	def generate_suggestions(self, word):
 		suggestions = []
 		word = word.strip()
-		
+
 		if not word:
 			return suggestions
-		
+
 		for dict_word in self.dictionary.keys():
 			if dict_word.startswith(word):
 				suggestions.append(dict_word)
-		
+
 		if len(word) > 2:
 			base_word = word[:-1]
 			for dict_word in self.dictionary.keys():
 				if dict_word.startswith(base_word) and dict_word not in suggestions:
 					suggestions.append(dict_word)
-		
+
 		pattern_suggestions = self.get_pattern_suggestions(word)
 		suggestions.extend(pattern_suggestions)
-		
+
 		unique_suggestions = list(set(suggestions))
 		return sorted(unique_suggestions)[:15]
 
 	def get_pattern_suggestions(self, word):
 		suggestions = []
-		
+
 		if len(word) < 4:
 			return suggestions
-		
+
 		first_char = word[0]
 		last_char = word[-1]
 		second_char = word[1] if len(word) > 1 else ''
 		second_last_char = word[-2] if len(word) > 1 else ''
-		
+
 		pattern = f"^{re.escape(first_char)}{re.escape(second_char)}.*{re.escape(second_last_char)}{re.escape(last_char)}$"
-		
+
 		try:
 			regex = re.compile(pattern)
 			for dict_word in self.dictionary.keys():
@@ -224,7 +222,7 @@ class SiamSquareCore:
 					suggestions.append(dict_word)
 		except re.error:
 			pass
-		
+
 		month_patterns = {
 			r'^พฤศพาคม$': 'พฤษภาคม',
 			r'^พฤศภาคม$': 'พฤษภาคม',
@@ -240,30 +238,30 @@ class SiamSquareCore:
 			r'^พฤศจิก.*$': 'พฤศจิกายน',
 			r'^ธันวา.*$': 'ธันวาคม'
 		}
-		
+
 		for pattern, correction in month_patterns.items():
 			if re.match(pattern, word) and correction in self.dictionary:
 				suggestions.append(correction)
-		
+
 		return suggestions
 
 	def spell_word(self, word):
 		if not word:
 			ui.message(_("ไม่พบคำสำหรับสะกด"))
 			return
-			
+
 		consonants = r'[ก-ฮ]'
 		vowels = r'[ะาๅิีึืุูเแโใไ]'
 		tone_marks = r'[่้๊๋]'
-		
+
 		def get_char_name(char):
 			if re.match(consonants, char):
 				return char
 			elif re.match(vowels, char):
 				return {
-					'ะ': 'สระอะ', 'า': 'สระอา', 'ๅ': 'สระอา (ยาว)', 
-					'ิ': 'สระอิ', 'ี': 'สระอี', 'ึ': 'สระอึ', 'ื': 'สระอื', 
-					'ุ': 'สระอุ', 'ู': 'สระอู', 'เ': 'สระเอ', 'แ': 'สระแอ', 
+					'ะ': 'สระอะ', 'า': 'สระอา', 'ๅ': 'สระอา (ยาว)',
+					'ิ': 'สระอิ', 'ี': 'สระอี', 'ึ': 'สระอึ', 'ื': 'สระอื',
+					'ุ': 'สระอุ', 'ู': 'สระอู', 'เ': 'สระเอ', 'แ': 'สระแอ',
 					'โ': 'สระโอ', 'ใ': 'สระใอ', 'ไ': 'สระไอ'
 				}.get(char, f"สระ {char}")
 			elif re.match(tone_marks, char):
@@ -277,14 +275,13 @@ class SiamSquareCore:
 		for char in word:
 			char_name = get_char_name(char)
 			spelled_chars.append(char_name)
-		
+
 		spelled_text = ", ".join(spelled_chars)
 		ui.message(spelled_text)
 
 	def execute_replacement(self, text_to_paste):
 		if not text_to_paste:
 			return
-		
 		if " " in text_to_paste:
 			self._paste_sentence_classic(text_to_paste)
 		else:
@@ -310,7 +307,7 @@ class SiamSquareCore:
 				backup_text = api.getClipData()
 			except Exception:
 				pass
-			
+
 			api.copyToClip(text_to_paste)
 			try:
 				paste_gesture = KeyboardInputGesture.fromName("shift+insert")
@@ -320,7 +317,7 @@ class SiamSquareCore:
 				return
 			except Exception:
 				pass
-			
+
 			if window_handle:
 				WM_PASTE = 0x0302
 				watchdog.cancellableSendMessage(window_handle, WM_PASTE, 0, 0)
@@ -328,7 +325,7 @@ class SiamSquareCore:
 			else:
 				log.error("No paste method available")
 				ui.message(_("ไม่สามารถวางข้อความได้"))
-			
+
 			core.callLater(150, self._restore_clipboard, backup_text)
 		except Exception as e:
 			log.error(f"Error sending paste command: {e}")

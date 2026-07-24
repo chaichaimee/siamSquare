@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: siamSquare 2026.7.0\n"
+"Project-Id-Version: siamSquare 2026.7.7\n"
 "Report-Msgid-Bugs-To: chaicm75@gmail.com\n"
-"POT-Creation-Date: 2026-06-27 08:48+0700\n"
+"POT-Creation-Date: 2026-07-24 13:32+0700\n"
 "PO-Revision-Date: \n"
 "Last-Translator: chaiBot and Malee Yamazaki\n"
 "Language-Team: English\n"
@@ -64,10 +64,6 @@ msgstr "กรุณากรอกความหมาย"
 msgid "กรุณากรอกคำ"
 msgstr "กรุณากรอกคำ"
 
-#: siamSquareCore.py:82
-msgid "กรุณาเลือกคำ"
-msgstr "กรุณาเลือกคำ"
-
 #: siamCenter.py:352
 msgid "กรุณาเลือกคำที่ต้องการแก้ไข"
 msgstr "กรุณาเลือกคำที่ต้องการแก้ไข"
@@ -116,7 +112,7 @@ msgstr "คัดลอกคำและความหมายเรียบ
 msgid "คำ:"
 msgstr "คำ:"
 
-#: siamSquareCore.py:39
+#: siamSquareCore.py:44
 msgid "คำที่พบ: {}"
 msgstr "คำที่พบ: {}"
 
@@ -124,7 +120,7 @@ msgstr "คำที่พบ: {}"
 msgid "คำสะกดผิด คำใกล้เคียง"
 msgstr "คำสะกดผิด คำใกล้เคียง"
 
-#: siamSquareCore.py:26
+#: siamSquareCore.py:28
 msgid "คำแนะนำสำหรับคำสะกดผิด"
 msgstr "คำแนะนำสำหรับคำสะกดผิด"
 
@@ -137,7 +133,7 @@ msgid "พจนานุกรมถูกโหลดใหม่เรีย�
 msgstr "พจนานุกรมถูกโหลดใหม่เรียบร้อยแล้ว"
 
 #: siamCenter.py:56
-#: siamSquareCore.py:57
+#: siamSquareCore.py:62
 msgid "ยกเลิก"
 msgstr "ยกเลิก"
 
@@ -165,12 +161,8 @@ msgstr "เกิดข้อผิดพลาดในการเพิ่ม
 msgid "เกิดข้อผิดพลาดในการแก้ไขคำ"
 msgstr "เกิดข้อผิดพลาดในการแก้ไขคำ"
 
-#: siamSquareCore.py:92
-msgid "เกิดข้อผิดพลาดในการแทนที่คำ"
-msgstr "เกิดข้อผิดพลาดในการแทนที่คำ"
-
 #: siamCenter.py:150
-#: siamSquareCore.py:148
+#: siamSquareCore.py:146
 msgid "เกิดข้อผิดพลาดในการโหลดพจนานุกรม: {}"
 msgstr "เกิดข้อผิดพลาดในการโหลดพจนานุกรม: {}"
 
@@ -184,7 +176,7 @@ msgstr "เพิ่มคำ"
 msgid "เพิ่มคำลงพจนานุกรมสมบูรณ์"
 msgstr "เพิ่มคำลงพจนานุกรมสมบูรณ์"
 
-#: siamSquareCore.py:42
+#: siamSquareCore.py:47
 msgid "เลือกคำที่ถูกต้องเพื่อแทนที่:"
 msgstr "เลือกคำที่ถูกต้องเพื่อแทนที่:"
 
@@ -198,16 +190,12 @@ msgstr "แก้ไขคำ"
 msgid "แก้ไขคำสมบูรณ์"
 msgstr "แก้ไขคำสมบูรณ์"
 
-#: siamSquareCore.py:53
+#: siamSquareCore.py:58
 msgid "แทนที่คำ"
 msgstr "แทนที่คำ"
 
-#: siamSquareCore.py:88
-msgid "แทนที่ด้วยคำว่า: {}"
-msgstr "แทนที่ด้วยคำว่า: {}"
-
+#: siamSquareCore.py:178
 #: siamSquareCore.py:180
-#: siamSquareCore.py:182
 msgid "ไม่พบความหมายของคำว่า {}"
 msgstr "ไม่พบความหมายของคำว่า {}"
 
@@ -225,11 +213,11 @@ msgstr "ไม่พบคำที่เริ่มด้วย: {}"
 msgid "ไม่พบคำว่า: {} ในพจนานุกรม"
 msgstr "ไม่พบคำว่า: {} ในพจนานุกรม"
 
-#: siamSquareCore.py:153
+#: siamSquareCore.py:151
 msgid "ไม่พบคำสำหรับค้นหา"
 msgstr "ไม่พบคำสำหรับค้นหา"
 
-#: siamSquareCore.py:252
+#: siamSquareCore.py:250
 msgid "ไม่พบคำสำหรับสะกด"
 msgstr "ไม่พบคำสำหรับสะกด"
 
@@ -241,7 +229,7 @@ msgstr "ไม่พบคำแนะนำที่ใกล้เคียง
 msgid "ไม่พบไฟล์พจนานุกรม"
 msgstr "ไม่พบไฟล์พจนานุกรม"
 
-#: siamSquareCore.py:330
+#: siamSquareCore.py:327
 msgid "ไม่สามารถวางข้อความได้"
 msgstr "ไม่สามารถวางข้อความได้"
 
